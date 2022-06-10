@@ -5,6 +5,7 @@ import "./Ownable.sol";
 
 interface INFT {
     function mint(address to) external;
+    function owner() external view returns (address);
 }
 
 interface IToken {
@@ -108,6 +109,8 @@ contract Crowdsale is Ownable{
 
     function start() public onlyOwner{
         require(_startTime==0,"Crowdsale already started");
+        INFT nft = INFT(_NFT);
+        require(nft.owner()==address(this),"Cannot start without ownership of TOA contract");
         _startTime = block.timestamp;
     }
 
@@ -174,6 +177,16 @@ contract Crowdsale is Ownable{
         IToken token = IToken(_token);
         token.transfer(to,fundsToReturn);
     }
+
+    function balanceOf(address account) public view returns (uint256){
+        if(!isSuccess()){
+            return _unmintedTOAs[account] * _priceTOA;
+        }
+        if(_assignmentAddresses[_assignmentIdx[msg.sender]]!=account) return 0;
+        if(_assignmentIdx[account]<4) return 0;
+        if(_allocationWithdrawn[account]!=0) return 0;
+        return _fundAllocation[_assignmentIdx[account]]*_fundsRaised/100;
+    }
     
     function withdrawFunds(address to) public {
         require(_assignmentAddresses[_assignmentIdx[msg.sender]]==msg.sender,"not authorised to withdraw funds");
@@ -187,6 +200,21 @@ contract Crowdsale is Ownable{
         token.transfer(to,allocation);
     } 
 
+    function TOABalance(address account) public view returns (uint256){
+        if(_assignmentAddresses[_assignmentIdx[account]]==account){
+            uint256 idx = _assignmentIdx[msg.sender];
+            if(idx>3) return 0;
+            idx-=3;
+            uint256 bal = _allocationTOA[idx];
+            if(idx==3){
+                if(remainderTOAsToBonusPool!=0) return 0;
+                bal += _allocationTOA[0]-_numBeneficiaries;
+            }
+            return bal;
+        }
+        return _unmintedTOAs[msg.sender];
+    }
+
     function assignTOAs(address to) public {
         uint256 bal;
         if(_assignmentAddresses[_assignmentIdx[msg.sender]]==msg.sender){
@@ -194,9 +222,9 @@ contract Crowdsale is Ownable{
             require(idx>3,"Not authorised to assign TOAs");
             require(_allocationTOA[idx+1]>0,"No TOAs to assign");
             //scary bit here...
-            idx -= 4;
-            bal = _allocationTOA[idx+1];
-            if(idx==2){
+            idx -= 3;
+            bal = _allocationTOA[idx];
+            if(idx==3){
                 uint256 remainderTOAs = _allocationTOA[0]-_numBeneficiaries;
                 require(remainderTOAs==0 || remainderTOAsToBonusPool==0,"No TOAs to assign");
                 bal += remainderTOAs;
