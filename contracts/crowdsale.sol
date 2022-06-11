@@ -203,7 +203,7 @@ contract Crowdsale is Ownable{
     function TOABalance(address account) public view returns (uint256){
         if(_assignmentAddresses[_assignmentIdx[account]]==account){
             uint256 idx = _assignmentIdx[msg.sender];
-            if(idx>3) return 0;
+            if(idx<4) return 0;
             idx-=3;
             uint256 bal = _allocationTOA[idx];
             if(idx==3){
