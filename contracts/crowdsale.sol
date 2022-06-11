@@ -77,6 +77,7 @@ contract Crowdsale is Ownable{
         require(successThreshold/priceTOA<=allocationTOA[0],"Invalid allocation of TOAs or successThreshold");
         require(fundAllocation.length==4,"Invalid fundAllocation length");
         require(allocationTOA.length==6,"Invalid allocationTOA length");
+        require(duration>successWindow,"Duration must be > successWindow");
         _token = token;
         _NFT = NFT;
         _successThreshold = successThreshold;
@@ -126,7 +127,7 @@ contract Crowdsale is Ownable{
     }
 
     function isOpen() public view returns (bool){
-        if(timeUntilEnd()>0) return false;
+        if(timeUntilEnd()==0) return false;
         if(block.timestamp-_startTime>_successWindow){
             return (fundsRaised()>=_successThreshold);
         }
@@ -201,14 +202,29 @@ contract Crowdsale is Ownable{
     } 
 
     function TOABalance(address account) public view returns (uint256){
+        /*
+        * [0] - producer
+        * [1] - platform commission
+        * [2] - reserve fund
+        * [3] - auditor
+
+
+        * [4] - guardian
+        * [5] - rainmaker
+        * [6] - bonus pool
+        * [7] - concierge
+        * [8] - wisdom holders
+        */
+
         if(_assignmentAddresses[_assignmentIdx[account]]==account){
             uint256 idx = _assignmentIdx[msg.sender];
             if(idx<4) return 0;
-            idx-=3;
-            uint256 bal = _allocationTOA[idx];
-            if(idx==3){
+
+            idx-=4; //3
+            uint256 bal = _allocationTOA[idx+1]; //ignore beneficiaries
+            if(idx==2){
                 if(remainderTOAsToBonusPool!=0) return 0;
-                bal += _allocationTOA[0]-_numBeneficiaries;
+                if(!isOpen()) bal += _allocationTOA[0]-_numBeneficiaries;
             }
             return bal;
         }
@@ -216,15 +232,16 @@ contract Crowdsale is Ownable{
     }
 
     function assignTOAs(address to) public {
+        require(!isOpen(),"Cannot assign TOAs while crowdsale is open");
         uint256 bal;
         if(_assignmentAddresses[_assignmentIdx[msg.sender]]==msg.sender){
             uint256 idx = _assignmentIdx[msg.sender];
             require(idx>3,"Not authorised to assign TOAs");
             require(_allocationTOA[idx+1]>0,"No TOAs to assign");
             //scary bit here...
-            idx -= 3;
-            bal = _allocationTOA[idx];
-            if(idx==3){
+            idx -= 4;
+            bal = _allocationTOA[idx+1];
+            if(idx==2){
                 uint256 remainderTOAs = _allocationTOA[0]-_numBeneficiaries;
                 require(remainderTOAs==0 || remainderTOAsToBonusPool==0,"No TOAs to assign");
                 bal += remainderTOAs;
