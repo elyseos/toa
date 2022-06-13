@@ -183,8 +183,8 @@ contract Crowdsale is Ownable{
         if(!isSuccess()){
             return _unmintedTOAs[account] * _priceTOA;
         }
-        if(_assignmentAddresses[_assignmentIdx[msg.sender]]!=account) return 0;
-        if(_assignmentIdx[account]<4) return 0;
+        if(_assignmentAddresses[_assignmentIdx[account]]!=account) return 0;
+        if(_assignmentIdx[account]>3) return 0;
         if(_allocationWithdrawn[account]!=0) return 0;
         return _fundAllocation[_assignmentIdx[account]]*_fundsRaised/100;
     }
@@ -199,36 +199,22 @@ contract Crowdsale is Ownable{
         _allocationWithdrawn[msg.sender] = allocation;
         IToken token = IToken(_token);
         token.transfer(to,allocation);
-    } 
+    }     
 
     function TOABalance(address account) public view returns (uint256){
-        /*
-        * [0] - producer
-        * [1] - platform commission
-        * [2] - reserve fund
-        * [3] - auditor
-
-
-        * [4] - guardian
-        * [5] - rainmaker
-        * [6] - bonus pool
-        * [7] - concierge
-        * [8] - wisdom holders
-        */
-
         if(_assignmentAddresses[_assignmentIdx[account]]==account){
-            uint256 idx = _assignmentIdx[msg.sender];
+            
+            uint256 idx = _assignmentIdx[account];
             if(idx<4) return 0;
-
-            idx-=4; //3
-            uint256 bal = _allocationTOA[idx+1]; //ignore beneficiaries
-            if(idx==2){
-                if(remainderTOAsToBonusPool!=0) return 0;
-                if(!isOpen()) bal += _allocationTOA[0]-_numBeneficiaries;
+            idx-=4;
+            uint256 bal = _allocationTOA[idx+1];
+            if(idx==2 && bal>0){
+                if(!isOpen()) bal += (_allocationTOA[0]-_numBeneficiaries);
             }
             return bal;
+            
         }
-        return _unmintedTOAs[msg.sender];
+        return _unmintedTOAs[account];
     }
 
     function assignTOAs(address to) public {
@@ -237,15 +223,13 @@ contract Crowdsale is Ownable{
         if(_assignmentAddresses[_assignmentIdx[msg.sender]]==msg.sender){
             uint256 idx = _assignmentIdx[msg.sender];
             require(idx>3,"Not authorised to assign TOAs");
-            require(_allocationTOA[idx+1]>0,"No TOAs to assign");
-            //scary bit here...
+ 
             idx -= 4;
+            require(_allocationTOA[idx+1]>0,"No TOAs to assign");
             bal = _allocationTOA[idx+1];
             if(idx==2){
                 uint256 remainderTOAs = _allocationTOA[0]-_numBeneficiaries;
-                require(remainderTOAs==0 || remainderTOAsToBonusPool==0,"No TOAs to assign");
                 bal += remainderTOAs;
-                remainderTOAsToBonusPool = remainderTOAs;
             }
             _allocationTOA[idx+1] = 0;
         } else {
