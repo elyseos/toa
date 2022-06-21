@@ -27,8 +27,14 @@ contract GuardianEscrow is Ownable{
     uint256 private _stakedUSDC;
     uint256 private _stakedELYS;
 
-    mapping(address => uint256) private _remedies;
-    mapping (uint256 => uint256[2]) private _remediesClaimed; //maps year number to amount claimed
+    struct Pair{
+        uint128 USDC;
+        uint128 ELYS;
+    }
+
+    Pair private _remedies;
+    mapping(uint256 => Pair) private _remedyWithdrawn;
+    mapping(uint256 => Pair) private _stakeWithdrawal;
 
     uint256 private _blocktime; //for testing
 
@@ -63,41 +69,68 @@ contract GuardianEscrow is Ownable{
         emit Staked(usdcAmount, elysAmount, _blockTime());
     }
 
-    function executeRemedy(uint256 amount) public {
+    function executeRemedy(uint256 usdcAmount, uint256 elysAmount) public {
         require(msg.sender==_remedyContract,"Not authorised to execute remedy");
-        //loop through toas
+        (uint256 availableUSDC, uint256 availableELYS) = amountStaked();
+        require(usdcAmount<=availableUSDC && elysAmount<=availableELYS,"Insufficient staked funds for amounts");
+        _remedies.USDC += uint128(usdcAmount);
+        _remedies.ELYS += uint128(elysAmount);
+    }
+
+    function amountStaked() public view returns (uint256, uint256){
+        return (_stakedUSDC-_remedies.USDC,_stakedELYS-_remedies.ELYS);
     }
 
     function availableStakeToWithdraw() public view returns (uint256, uint256){
         uint256 yr = _getYear();
         if(yr<3) return (0,0);
-        uint256 usdc = _stakedUSDC/10;
-        uint256 elys = _stakedELYS/10;
+        (uint256 usdc,uint256 elys) = amountStaked();
+        usdc/=10;
+        elys/=10;
         if(yr<10){
-            usdc -= _remediesClaimed[yr][0];
-            elys -= _remediesClaimed[yr][1];
-            return (usdc,elys);
+            return (usdc - _stakeWithdrawal[yr].USDC,elys - _stakeWithdrawal[yr].ELYS);
         }
-        usdc *=3;
-        elys *=3;
-        for(uint256 i=8;i<=10;i++){
-            usdc -= _remediesClaimed[i][0];
-            elys -= _remediesClaimed[i][1];
-        }
-        return (usdc,elys);
+        return (usdc*3 - _stakeWithdrawal[yr].USDC,elys*3- _stakeWithdrawal[yr].ELYS);
     }
 
     function withdrawStake(address to) public {
         require(msg.sender==_guardian,"Not authorised to withdraw");
         (uint256 usdcAmount, uint256 elysAmount) = availableStakeToWithdraw();
         require(usdcAmount>0 || elysAmount>0,"No funds to withdraw");
+        uint256 yr = _getYear();
+        _stakeWithdrawal[yr].USDC += uint128(usdcAmount);
+        _stakeWithdrawal[yr].ELYS += uint128(elysAmount);
         IToken(_usdc).transfer(to,usdcAmount);
         IToken(_elys).transfer(to,elysAmount); 
     }
 
-    function withdrawRemedy(address to) public {
-
+    function _totalRemedies() private view returns (uint256, uint256){
+        return (uint256(_remedies.USDC),uint256(_remedies.ELYS));
     }
+
+    function remediesAvailable(uint256 tokenID) public view returns (uint256, uint256){
+        TOA toas = TOA(_toa);
+        uint256 total = toas.totalSupply();
+        (uint256 usdc, uint256 elys) = _totalRemedies();
+        usdc/=total;
+        elys/=total;
+        usdc -= _remedyWithdrawn[tokenID].USDC;
+        elys -= _remedyWithdrawn[tokenID].ELYS;
+        return (usdc,elys);
+    }
+
+
+    function withdrawRemedy(uint256 tokenID, address to) public {
+        TOA toas = TOA(_toa);
+        require(toas.ownerOf(tokenID)==msg.sender,"Unauthorized to withdraw");
+        (uint256 usdcAmount, uint256 elysAmount) = remediesAvailable(tokenID);
+        require(usdcAmount>0||elysAmount>0,"Nothing to withdraw");
+        _remedyWithdrawn[tokenID].USDC += uint128(usdcAmount);
+        _remedyWithdrawn[tokenID].ELYS += uint128(elysAmount);
+        IToken(_usdc).transfer(to,usdcAmount);
+        IToken(_elys).transfer(to,elysAmount); 
+    }
+    
 
     function _getYear() private view returns (uint256){
         return (_blockTime()-_start)/(365 days);
