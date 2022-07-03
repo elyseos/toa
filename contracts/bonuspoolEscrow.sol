@@ -15,7 +15,7 @@ contract BonusPoolEscrow{
     uint256 private _finalPaymentAmount;
 
     modifier onlyExecutionContract() {
-        require(_executionContract == msg.sender, "Ownable: caller is not the owner");
+        require(_executionContract == msg.sender, "caller is not execution contract");
         _;
     }
     
@@ -28,10 +28,10 @@ contract BonusPoolEscrow{
     6 - sales
     7 - wisdom holder
     */
-    constructor(address usdc, address nft, address executionContract, address[] memory wallets){
+    constructor(address usdc, address nft, address[] memory wallets){
         _usdc = usdc;
         _nft = nft;
-        _executionContract = executionContract;
+        _executionContract = msg.sender;
         require(wallets.length==6,"Invalid length for wallets");
         _wallets = wallets;
     }
@@ -67,6 +67,12 @@ contract BonusPoolEscrow{
         _finalPaymentCounter++;
         IERC20 usdc = IERC20(_usdc);
         usdc.transfer(_wallets[idx],_finalPaymentAmount);
+    }
+
+    function payFinalAll() public onlyExecutionContract{
+        while(_finalPaymentCounter<_wallets.length){
+            payFinal();
+        }
     }
 
 }
