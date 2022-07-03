@@ -32,7 +32,7 @@ contract BonusPoolEscrow{
         _usdc = usdc;
         _nft = nft;
         _executionContract = msg.sender;
-        require(wallets.length==6,"Invalid length for wallets");
+        require(wallets.length==2,"Invalid length for wallets");
         _wallets = wallets;
     }
 
