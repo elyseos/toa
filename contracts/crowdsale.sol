@@ -147,6 +147,10 @@ contract Crowdsale is Ownable{
         return _allocationTOA[0] - _numBeneficiaries;
     }
 
+    function toaPrice() public view returns (uint256){
+        return _priceTOA;
+    }
+
     function buy(uint256 numTOAs) public {
         require(numTOAs>0,"numTOAs cannot be zero");
         //check crowdsale still running
