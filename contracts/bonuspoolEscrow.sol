@@ -19,15 +19,6 @@ contract BonusPoolEscrow{
         _;
     }
     
-    /*
-    wallets:
-    0 - producer
-    1 - guardian
-    2 - auditor
-    5 - rainmaker
-    6 - sales
-    7 - wisdom holder
-    */
     constructor(address usdc, address nft, address[] memory wallets){
         _usdc = usdc;
         _nft = nft;
