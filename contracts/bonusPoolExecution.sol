@@ -17,6 +17,10 @@ contract BonusPoolExecution{
         _escrow = new BonusPoolEscrow(usdc,nft,wallets);
     }
 
+    function numRecipients() public view returns (uint256){
+        return _escrow.numRecipients();
+    }
+
     function escrowAddress() public view returns (address){
         return address(_escrow);
     }
@@ -31,6 +35,10 @@ contract BonusPoolExecution{
 
     function payFinalAll() public onlyGovernanceContract{
         _escrow.payFinalAll();
+    }
+
+    function poolBalance() public view returns (uint256){
+        return _escrow.poolBalance();
     }
 
 }
