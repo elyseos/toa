@@ -104,14 +104,14 @@ contract GuardianEscrow is Ownable{
         IToken(_elys).transfer(to,elysAmount); 
     }
 
-    function _totalRemedies() private view returns (uint256, uint256){
+    function totalRemedies() public view returns (uint256, uint256){
         return (uint256(_remedies.USDC),uint256(_remedies.ELYS));
     }
 
     function remediesAvailable(uint256 tokenID) public view returns (uint256, uint256){
         TOA toas = TOA(_toa);
         uint256 total = toas.totalSupply();
-        (uint256 usdc, uint256 elys) = _totalRemedies();
+        (uint256 usdc, uint256 elys) = totalRemedies();
         usdc/=total;
         elys/=total;
         usdc -= _remedyWithdrawn[tokenID].USDC;
@@ -145,16 +145,3 @@ contract GuardianEscrow is Ownable{
         _blocktime += days_ * (1 days);
     }
 }
-
-
-/*
-test addresses:
-    price oracle: 0x7d075DaF902E11824ec7A2f2Aa09C6a0d61eF15A
-    address usdc: 0x9b76deD4C2386E214dB5B6B70Dd26c37abf39E13
-    address elys: 0x52f1f3d2f38bdbe2377cda0b0dbeb993dc242b98
-
-mainnet addresses: 
-    price oracle: 0x86815820A579cCAff14909525a7178F489893A2D
-    address elys: 0xd89cc0d2A28a769eADeF50fFf74EBC07405DB9Fc;
-    address usdc: 0x04068DA6C83AFCFA0e13ba15A6696662335D5B75;
-*/
