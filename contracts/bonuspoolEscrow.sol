@@ -19,6 +19,15 @@ contract BonusPoolEscrow{
         _;
     }
     
+    /*
+    wallets:
+    0 - producer
+    1 - guardian
+    2 - auditor
+    5 - rainmaker
+    6 - sales
+    7 - wisdom holder
+    */
     constructor(address usdc, address nft, address[] memory wallets){
         _usdc = usdc;
         _nft = nft;
@@ -38,20 +47,24 @@ contract BonusPoolEscrow{
     }
 
     function payRecipient(uint256 walletIdx, uint256 amount) public onlyExecutionContract {
-        require(walletIdx<_wallets.length,"WalletIdx out of bounds");
+        require(walletIdx<numRecipients(),"WalletIdx out of bounds");
         require(poolBalance()>=amount,"Amount cannot be larger than pool balance");
         IERC20 usdc = IERC20(_usdc);
         usdc.transfer(_wallets[walletIdx],amount);
     }
 
+    function numRecipients() public view returns (uint256){
+        return _wallets.length;
+    }
+
     function payFinal() public onlyExecutionContract{
-        require(_finalPaymentCounter<_wallets.length,"Payment complete");
+        require(_finalPaymentCounter<numRecipients(),"Payment complete");
         require(poolBalance()>0,"Insufficient funds");
         if(_finalPaymentCounter==0){
-            _finalPaymentAmount = poolBalance()/_wallets.length;
+            _finalPaymentAmount = poolBalance()/numRecipients();
             require(_finalPaymentAmount>0,"Insufficient funds to share equally");
         }
-        if(_finalPaymentCounter==_wallets.length-1){
+        if(_finalPaymentCounter==numRecipients()-1){
             _finalPaymentAmount = poolBalance(); //empty out rounding errors
         }
         uint256 idx = _finalPaymentCounter;
@@ -61,7 +74,7 @@ contract BonusPoolEscrow{
     }
 
     function payFinalAll() public onlyExecutionContract{
-        while(_finalPaymentCounter<_wallets.length){
+        while(_finalPaymentCounter<numRecipients()){
             payFinal();
         }
     }
