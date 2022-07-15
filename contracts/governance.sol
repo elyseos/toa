@@ -3,11 +3,22 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 
+interface IBonusPoolExecution{
+    function poolBalance() external view returns (uint256);
+    function payRecipient(uint256 idx, uint256 amount) external;
+    function numRecipients() external view returns (uint256);
+}
+
+interface IRemedyExecution{
+    function totalRemedies() external view returns (uint256, uint256);
+    function execute(uint256 usdcAmount, uint256 elysAmount) external;
+}
+
 contract Governance{
     address private _toa;
     address private _bonusPool;
-    address private _bonusPoolExecution;
-    address private _remedyExecution;
+    IBonusPoolExecution private _bonusPoolExecution;
+    IRemedyExecution private _remedyExecution;
     uint256 private _quorumPerc;
 
     uint8 public constant bonusAllocation = 0;
@@ -17,14 +28,18 @@ contract Governance{
     struct Referendum{
         string CID;
         uint8 voteType;
-        uint256 allocation;
+        uint256[] allocation;
+        uint256[] recipients;
         uint256 startTime;
         uint256 duration;
         uint256 numVotes; 
+        bool actioned;
     }
 
     mapping(uint256 => Referendum) private _referendums;
     uint256 private _numReferendums;
+    uint256 private _pendingBonusPoolAmount;
+    uint256[2] private _pendingRemedyAmount;
     mapping(uint256 => mapping(uint256 => bool)) private _voted;
     mapping(uint256 => mapping(uint256 => uint256)) private _vote;
 
@@ -33,8 +48,8 @@ contract Governance{
     constructor(address TOA, address bonusPool, address bonusPoolExecution, address remedyExecution, uint256 quorumPerc){
         _toa = TOA;
         _bonusPool = bonusPool;
-        _bonusPoolExecution = bonusPoolExecution;
-        _remedyExecution = remedyExecution;
+        _bonusPoolExecution = IBonusPoolExecution(bonusPoolExecution);
+        _remedyExecution = IRemedyExecution(remedyExecution);
         _quorumPerc = quorumPerc;
     }
 
@@ -47,22 +62,34 @@ contract Governance{
         return toa;
     }
 
-    function createReferrendum(uint8 voteType, string calldata CID, uint256 allocation, uint256 duration) public {
+    function createReferrendum(uint8 voteType, string calldata CID, uint256[] calldata allocation, uint256[] calldata recipients, uint256 duration) public {
         require(isTOAHolder(),"Not authorized to create Referendum");
         if(voteType==bonusAllocation){
             //check with bonus execution => bonus escrow if allocation is feasable 
+            require(_bonusPoolExecution.numRecipients()>=recipients.length,"Invalid number of recipients");
+            require(allocation.length==1,"Invalid allocation length");
+            require(allocation[0]*recipients.length+_pendingBonusPoolAmount<=_bonusPoolExecution.poolBalance(),"Insufficient pool balance for allocation");
+            _pendingBonusPoolAmount += allocation[0]*recipients.length;
         } else if (voteType==remedy){
             //check with remedy execution contract if allocation is feasable
+            (uint256 usdcAmount, uint256 elysAmount) = _remedyExecution.totalRemedies();
+            require(allocation.length==2,"Invalid allocation length");
+            require(usdcAmount>=allocation[0]+_pendingRemedyAmount[0] && elysAmount>=allocation[1]+_pendingRemedyAmount[1],"Invalid allocation amounts");
+            _pendingRemedyAmount[0] += _pendingRemedyAmount[0];
+            _pendingRemedyAmount[1] += _pendingRemedyAmount[1];
         }
         _referendums[_numReferendums] = Referendum({
             CID: CID,
             voteType: voteType,
             allocation: allocation,
+            recipients: recipients,
             startTime: _blockTime(),
             duration: duration,
-            numVotes: 0
+            numVotes: 0,
+            actioned: false
         });
         _numReferendums++;
+        
     }
 
     function numReferendums() public view returns(uint256){
@@ -121,19 +148,24 @@ contract Governance{
     }
 
     function actionReferendum(uint256 idx) public {
+        require(!_referendums[idx].actioned,"Referendum already actioned");
         require(quorumReached(idx),"Quorum not reached");
+        require(isComplete(idx),"Referendum still ongoing");
+        _referendums[idx].actioned = true;
         if(_referendums[idx].voteType==bonusAllocation){
-
+            for(uint256 i=0;i<_referendums[idx].recipients.length;i++){
+                _bonusPoolExecution.payRecipient(_referendums[idx].recipients[i], _referendums[idx].allocation[0]);
+                _pendingBonusPoolAmount -= _referendums[idx].allocation[0];
+            }
         } else if (_referendums[idx].voteType==remedy){
-
-        }
-        else {
-
+            _remedyExecution.execute(_referendums[idx].allocation[0],_referendums[idx].allocation[1]);
+            _pendingRemedyAmount[0]-=_referendums[idx].allocation[0];
+            _pendingRemedyAmount[1]-=_referendums[idx].allocation[1];
         }
     }
 
     function _blockTime() private view returns (uint256){
-        return _blocktime;
+        return _blocktime; //for testing only
         //return block.timestamp;
     }
 
