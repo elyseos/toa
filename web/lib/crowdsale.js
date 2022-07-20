@@ -28,7 +28,7 @@ let abis = {}
 abis[USDCAddress] = abi.USDC
 abis[ELYSAddress] = abi.Elys
 abis[TOAAddress] = abi.toa
-abis[crowdsaleAddress] = abi.toa
+abis[crowdsaleAddress] = abi.crowdsale
 
 const confirm = (txhash) => {
     return new Promise(r=>ethersProvider.once(txhash,()=>r()))
