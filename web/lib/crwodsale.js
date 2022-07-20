@@ -75,15 +75,15 @@ const $ = {
     ELYS: {
         //Read functions
         address: ELYSAddress,
-        allowance: async (owner, spender) => await USDCContract.allowance(owner,spender),
-        balanceOf: async (address) => await USDCContract.balanceOf(address),
-        decimals: async () => await USDCContract.decimals(),
-        name: async () => await USDCContract.name(),
-        symbol: async () => await USDCContract.symbol(),
+        allowance: async (owner, spender) => await ELysContract.allowance(owner,spender),
+        balanceOf: async (address) => await ELysContract.balanceOf(address),
+        decimals: async () => await ELysContract.decimals(),
+        name: async () => await ELysContract.name(),
+        symbol: async () => await ELysContract.symbol(),
         //Write functions - include provider
-        approve: async (provider, spender, amount) => await send(USDCAddress, provider, 'approve',[spender,amount]),
+        approve: async (provider, spender, amount) => await send(ELYSAddress, provider, 'approve',[spender,amount]),
         test: {
-            mint: async (provider, to, amount) => await send(USDCAddress, provider, 'mint',[to, amount]),
+            mint: async (provider, to, amount) => await send(ELYSAddress, provider, 'mint',[to, amount]),
         }
     },
     TOA: {
