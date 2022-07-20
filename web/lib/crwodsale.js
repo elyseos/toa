@@ -86,7 +86,7 @@ const $ = {
             mint: async (provider, to, amount) => await send(ELYSAddress, provider, 'mint',[to, amount]),
         }
     },
-    TOA: {
+    TOA: { //TODO: tokenURI
         //Read functions
         address: TOAAddress,
         balanceOf: async (address) => await TOAContract.balanceOf(address),
@@ -97,9 +97,9 @@ const $ = {
         getApproved: async (tokenId) => await TOAContract.getApproved(tokenId),
         isApprovedForAll: async (owner, operator) => await TOAContract.isApprovedForAll(owner, operator),
         //Write functions - include provider
-        approve: async (provider, to, tokenId) => await send(TOAAddress,provider,[to, tokenId]),
-        transferFrom: async (provider, from, to, tokenId) => await send(TOAAddress,provider,[from, to, tokenId]),
-        setApprovalForAll: async (provider, operator, approved) => await send(TOAAddress,provider,[operator, approved])
+        approve: async (provider, to, tokenId) => await send(TOAAddress,provider,'approve',[to, tokenId]),
+        transferFrom: async (provider, from, to, tokenId) => await send(TOAAddress,provider,'transferFrom',[from, to, tokenId]),
+        setApprovalForAll: async (provider, operator, approved) => await send(TOAAddress,provider,'setApprovalForAll',[operator, approved])
     },
     crowdsale: {
         //Read functions
@@ -114,10 +114,10 @@ const $ = {
         TOABalance: async (account) => await CrowdsaleContract.TOABalance(account),
         balanceOf: async (account) => await CrowdsaleContract.balanceOf(account), //USDC balance available
         //Write functions - include provider
-        buy: async (provider, numTOAs) => await send(crowdsaleAddress,provider,[numTOAs]),
-        returnFunds: async (provider, to) => await send(crowdsaleAddress,provider,[to]),
-        withdrawFunds: async (provider, to) => await send(crowdsaleAddress,provider,[to]),
-        assignTOAs: async (provider, to) => await send(crowdsaleAddress,provider,[to])
+        buy: async (provider, numTOAs) => await send(crowdsaleAddress,provider,'buy',[numTOAs]),
+        returnFunds: async (provider, to) => await send(crowdsaleAddress,provider,'returnFunds',[to]),
+        withdrawFunds: async (provider, to) => await send(crowdsaleAddress,provider,'withdrawFunds',[to]),
+        assignTOAs: async (provider, to) => await send(crowdsaleAddress,provider,'assignTOAs',[to])
     }
 
 }
