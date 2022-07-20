@@ -40,8 +40,9 @@ const send = async (address, provider, func, params) => {
     const contract = new ethers.Contract(address, abis[address], provider)
     let ret
     try{
+        const feeData = await provider.getFeeData()
         console.log(func)
-        ret = await contract[func](...params)
+        ret = await contract[func](...params,{gasPrice: feeData.gasPrice})
     }
     catch(e){
         console.log(e)
